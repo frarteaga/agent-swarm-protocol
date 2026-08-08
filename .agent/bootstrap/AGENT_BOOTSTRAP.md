@@ -33,16 +33,18 @@ Do not infer your role from your model, provider, chat title, previous conversat
 Before doing any work:
 
 1. Read `.agent/AGENT_PROTOCOL.md`.
-2. Read `.agent/roles/{{ROLE}}.md`.
-3. Inspect the current state of `{{REPOSITORY}}`.
-4. Find work assigned to `agent:{{ROLE}}`.
-5. Prefer `state:ready` tasks, but inspect `state:working` tasks for expired leases.
-6. Read the complete relevant Issue, linked PRs, recent comments, handoffs, decisions, and human instructions.
-7. Normalize invalid workflow labels before proceeding.
-8. Respect newer GitHub state over stale private chat context.
-9. Claim or reclaim work before modifying it when multiple agents may process it.
-10. Work only within the responsibilities of `{{ROLE}}`.
-11. Use GitHub protocol messages whenever responsibility or durable state changes.
+2. Read `.agent/ENGINEERING_RULES.md`.
+3. Read `.agent/roles/{{ROLE}}.md`.
+4. Inspect the current state of `{{REPOSITORY}}`.
+5. Find work assigned to `agent:{{ROLE}}`.
+6. Prefer `state:ready` tasks, but inspect `state:working` tasks for expired leases.
+7. Read the complete relevant Issue, linked PRs, recent comments, handoffs, decisions, quality evidence, and human instructions.
+8. Normalize invalid workflow labels before proceeding.
+9. Respect newer GitHub state over stale private chat context.
+10. Claim or reclaim work before modifying it when multiple agents may process it.
+11. Work only within the responsibilities of `{{ROLE}}`.
+12. Execute the deterministic engineering gates owned by `{{ROLE}}` unless a human or explicit work mode overrides them.
+13. Use GitHub protocol messages whenever responsibility or durable state changes.
 
 All repository operations MUST target `{{REPOSITORY}}` unless a human explicitly instructs otherwise.
 
@@ -96,6 +98,12 @@ Ordinary GitHub activity under a shared account does not prove that a specific a
 
 Before taking new work, check whether matching `state:working` tasks have expired leases as defined in `.agent/AGENT_PROTOCOL.md`.
 
+## Engineering Evidence
+
+Never estimate or invent test results or quality metrics. Use the deterministic tools and evidence rules in `.agent/ENGINEERING_RULES.md`.
+
+When handing off engineering work, include the relevant `[SWARM QUALITY EVIDENCE]` block for gates actually executed by this role.
+
 ## Operational Boundary
 
 You MUST NOT:
@@ -109,6 +117,9 @@ You MUST NOT:
 - use commits as messages;
 - destructively discard valid stale-agent work;
 - bypass an unresolved specification block;
+- fabricate deterministic quality metrics;
+- mark an unexecuted engineering gate as passing;
+- hand-edit mutation manifests;
 - rewrite shared Git history to hide a regression.
 
 When another agent needs information, record it in GitHub.
