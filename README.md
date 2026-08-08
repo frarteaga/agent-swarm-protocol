@@ -9,6 +9,7 @@ GitHub acts as the shared memory and coordination layer: Issues represent work a
 ```text
 .agent/
 ├── AGENT_PROTOCOL.md
+├── ENGINEERING_RULES.md
 ├── roles/
 │   ├── specifier.md
 │   ├── architect.md
@@ -19,9 +20,19 @@ GitHub acts as the shared memory and coordination layer: Issues represent work a
     └── AGENT_BOOTSTRAP.md
 ```
 
-`AGENT_PROTOCOL.md` defines the shared workflow, including claims, handoffs, leases/TTL, stale-work recovery, role ownership, review/QA transitions, specification blocks, and regression recovery.
+`AGENT_PROTOCOL.md` defines coordination: claims, handoffs, leases/TTL, stale-work recovery, ownership, specification blocks, and regression recovery.
+
+`ENGINEERING_RULES.md` defines the default deterministic engineering discipline: Gherkin/APS acceptance tests, TDD, coverage, CRAP, DRY, mutation-site limits, mutation testing, property testing, and E2E verification.
 
 `AGENT_BOOTSTRAP.md` configures each agent instance with its role, agent ID, target repository, and work-lease TTL.
+
+Under the full/default engineering discipline, the quality path is roughly:
+
+```text
+specifier -> architect (design) -> developer -> reviewer -> architect (hardening) -> qa -> done
+```
+
+The architect may therefore participate twice: once for design and again after implementation review for property/mutation hardening.
 
 ## Installation and initialization
 
@@ -38,14 +49,26 @@ WORK_LEASE_TTL_HOURS: 4
 Read and follow .agent/bootstrap/AGENT_BOOTSTRAP.md.
 ```
 
-Each agent then reads the shared protocol and its corresponding `.agent/roles/<ROLE>.md`, inspects GitHub, and begins work assigned to `agent:<ROLE>`. The same bootstrap is used for every agent; only the runtime values change.
+Each agent then reads the protocol, shared engineering rules, and its corresponding `.agent/roles/<ROLE>.md`, inspects GitHub, and begins work assigned to `agent:<ROLE>`. The same bootstrap is used for every agent; only the runtime values change.
+
+## Engineering discipline
+
+The default roles intentionally follow much of the engineering rigor used by SwarmForge while keeping GitHub as the communication transport:
+
+- **Specifier:** executable Gherkin plus user-interface E2E QA procedures.
+- **Developer:** strict red/green/refactor TDD plus executable acceptance tests.
+- **Reviewer:** independent review plus deterministic coverage, **CRAP <= 6**, DRY analysis, and **<= 100 mutation sites per changed/new source file**.
+- **Architect:** architecture review, property testing, language mutation hardening, and soft Gherkin mutation.
+- **QA:** final acceptance/E2E/property verification plus final CRAP/DRY and release checks.
+
+Metrics must come from deterministic tools; agents must never estimate or invent quality numbers.
 
 ## Inspiration
 
-This project was inspired by Robert C. Martin (Uncle Bob)'s [SwarmForge](https://github.com/unclebob/swarm-forge), particularly its role-based agent organization and explicit handoff discipline.
+This project was inspired by Robert C. Martin (Uncle Bob)'s [SwarmForge](https://github.com/unclebob/swarm-forge), particularly its role-based organization, explicit handoff discipline, TDD/acceptance pipeline, deterministic quality gates, mutation testing, and architecture-focused verification.
 
 This protocol takes a different approach to transport and coordination: instead of local tmux/file-based messaging, independent agents communicate through GitHub so they can run in separate ChatGPT, Perplexity, or other LLM sessions.
 
 ## Goal
 
-Keep multi-agent software development simple, auditable, recoverable, and easy for a human to supervise.
+Keep multi-agent software development simple, auditable, recoverable, deterministic, and easy for a human to supervise.
