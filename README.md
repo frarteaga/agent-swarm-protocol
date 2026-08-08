@@ -23,6 +23,23 @@ GitHub acts as the shared memory and coordination layer: Issues represent work a
 
 `AGENT_BOOTSTRAP.md` configures each agent instance with its role, agent ID, target repository, and work-lease TTL.
 
+## Installation and initialization
+
+1. Copy the `.agent/` directory into the repository the swarm will work on and commit it.
+2. Create the protocol labels used by that repository (`agent:*` and `state:*` as defined in `AGENT_PROTOCOL.md`).
+3. Create one persistent LLM chat/session per agent. Initialize each session with its runtime values and tell it to read `.agent/bootstrap/AGENT_BOOTSTRAP.md`:
+
+```text
+ROLE: developer
+AGENT_ID: developer-01
+REPOSITORY: owner/project
+WORK_LEASE_TTL_HOURS: 4
+
+Read and follow .agent/bootstrap/AGENT_BOOTSTRAP.md.
+```
+
+Each agent then reads the shared protocol and its corresponding `.agent/roles/<ROLE>.md`, inspects GitHub, and begins work assigned to `agent:<ROLE>`. The same bootstrap is used for every agent; only the runtime values change.
+
 ## Inspiration
 
 This project was inspired by Robert C. Martin (Uncle Bob)'s [SwarmForge](https://github.com/unclebob/swarm-forge), particularly its role-based agent organization and explicit handoff discipline.
