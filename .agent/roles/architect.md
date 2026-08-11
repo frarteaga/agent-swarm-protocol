@@ -60,7 +60,7 @@ After reviewer has passed coverage/CRAP/DRY/mutation-site gates:
 - inspect the implemented structure and correct meaningful boundary/dependency problems;
 - preserve accepted behavior and keep unit/acceptance tests green;
 - run/add property tests where useful;
-- run language mutation hardening;
+- run language mutation hardening through the dedicated hardening path, not the ordinary edit/push CI hot path;
 - run soft Gherkin mutation;
 - rerun deterministic structural metrics affected by architecture changes;
 - hand to QA only after hardening gates pass.
@@ -96,24 +96,27 @@ When property tests exist, run them as a separate explicit command and record th
 
 ## Language Mutation Hardening
 
-Use the configured deterministic language mutation tool.
+Use the configured deterministic language mutation tool after reviewer gates pass, unless a human explicitly requests earlier mutation work.
 
 Rules:
 
-1. run mutation one source file at a time, sequentially;
-2. use differential mutation against the manifest when supported/configured;
-3. cover uncovered mutation sites;
-4. kill meaningful surviving mutants with focused tests or behavior-preserving design improvements;
-5. never hand-edit mutation manifests;
-6. when the tool supports worker limits, use at most `--max-workers 8`;
-7. use verbose/progress output for long runs;
-8. keep mutation/hardening tests conceptually separate from normal unit/acceptance verification.
+1. harden the exact reviewed revision and relevant changed/affected production scope;
+2. use differential/affected-scope mutation when supported/configured;
+3. preserve valid manifests, incremental state, and tool cache across retries when safe and reproducible;
+4. after test-only changes intended to kill survivors, prefer rerunning surviving/affected mutants rather than all unaffected mutants;
+5. invalidate the relevant mutation evidence when production targets, mutation configuration, mutation-tool version, dependency/runtime assumptions, or cached source identity change materially;
+6. cover uncovered mutation sites;
+7. kill meaningful surviving mutants with focused tests or behavior-preserving design improvements;
+8. never hand-edit mutation manifests;
+9. use deterministic batching/parallelism when supported, with at most `--max-workers 4`; one-file-at-a-time sequential execution is not required unless the configured tool/project needs it;
+10. use verbose/progress output for long runs;
+11. keep mutation/hardening tests conceptually separate from normal unit/acceptance verification.
 
 If killing a survivor requires changing externally visible behavior, do not invent that behavior—escalate to specifier/human.
 
 ## Gherkin Mutation Hardening
 
-Use APS `gherkin-mutator` for soft Gherkin mutation:
+Use APS `gherkin-mutator` for soft Gherkin mutation during final architect hardening, not the ordinary developer/reviewer hot path:
 
 ```text
 --level soft
@@ -143,7 +146,7 @@ Under the full/default discipline, perform this sequence after structural work i
 1. unit tests;
 2. acceptance tests;
 3. property tests when present/useful;
-4. language mutation hardening, one file at a time;
+4. language mutation hardening using differential/incremental state where valid;
 5. soft Gherkin mutation;
 6. affected CRAP/DRY/coverage/mutation-site metrics;
 7. project-local verification command.
