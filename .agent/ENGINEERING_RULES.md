@@ -101,24 +101,40 @@ Preserve mutation manifests across splits. Mutation manifests MUST NOT be hand-e
 
 ## 10. Language mutation hardening
 
-Mutation testing is a hardening gate, separate from ordinary unit and acceptance testing.
+Mutation testing is a final hardening gate, separate from ordinary developer/reviewer feedback loops.
+
+### Fast-CI rule
+
+Full language mutation MUST NOT run by default on every ordinary `push` or `pull_request` update. The normal fast CI path should keep deterministic gates such as unit tests, acceptance tests, coverage, CRAP, DRY, and mutation-site counting, but reserve full mutation execution for the owning hardening stage.
+
+By default, full language mutation begins only after reviewer quality gates pass and the task is handed to `architect`, or when a human explicitly requests an earlier mutation run.
+
+A project MAY implement this as a separate hardening workflow, an explicit/manual workflow dispatch, a role-transition trigger, or another deterministic mechanism that avoids putting full mutation in the edit/push feedback loop.
+
+### Incremental execution
 
 When owned by the current role:
 
-- run mutation one source file at a time, sequentially;
-- use differential mutation against the tool manifest when supported/configured;
-- cover uncovered mutation sites and kill meaningful surviving mutants with tests or behavior-preserving design improvements;
+- run against the exact reviewed revision/scope being hardened;
+- use differential or affected-scope mutation when the configured tool supports it;
+- preserve valid mutation manifests, incremental state, and tool cache across retries when safe and reproducible;
+- do not delete mutation state merely to force a clean run on every retry;
+- after test-only changes intended to kill survivors, prefer rerunning surviving/affected mutants instead of recomputing unaffected mutants;
+- invalidate/recompute the relevant mutation scope when production targets, mutation configuration, mutation-tool version, dependency/runtime assumptions, or cached source identity change materially;
+- cover uncovered mutation sites and kill meaningful surviving mutants with focused tests or behavior-preserving design improvements;
 - do not hand-edit mutation manifests;
-- when supported, use at most `--max-workers 8`;
+- when supported, use deterministic batching and at most `--max-workers 4`; a one-source-file-at-a-time sequential strategy is not required unless the configured tool/project specifically needs it;
 - use progress/verbose output for long runs so a slow run is distinguishable from a hang.
+
+If the reviewed production revision changes after mutation evidence was produced, the architect MUST treat that evidence as stale for the affected scope and rerun the relevant hardening before handing to QA.
 
 Do not weaken assertions or mutate production semantics merely to game the mutation tool.
 
 ## 11. Gherkin mutation
 
-Gherkin acceptance mutation is a separate hardening gate using APS `gherkin-mutator`.
+Gherkin acceptance mutation is a separate final-hardening gate using APS `gherkin-mutator`; it is not part of the ordinary developer/reviewer hot path by default.
 
-Run soft mutation (`--level soft`) when the owning role performs final acceptance hardening. Mutation runs SHOULD expose periodic progress/status.
+Run soft mutation (`--level soft`) when the owning architect/hardening stage performs final acceptance hardening, or earlier only when explicitly requested. Mutation runs SHOULD expose periodic progress/status.
 
 If mutation reveals a no-op or meaningless Gherkin step, prefer fixing/removing the meaningless specification step rather than adding artificial example data solely to satisfy mutation.
 
@@ -149,10 +165,16 @@ E2E verification MUST NOT use a private/internal project API to bypass the user 
 Unless a human or explicit work mode says otherwise:
 
 - `specifier`: validates specification structure; does not run language mutation/CRAP/DRY;
-- `developer`: unit tests + acceptance tests, with TDD for changed behavior;
-- `reviewer`: unit + acceptance + coverage + CRAP + DRY + mutation-site count; does not run mutation tests or Gherkin mutation;
-- `architect`: unit + acceptance + property tests when present + language mutation hardening + soft Gherkin mutation; rerun deterministic structural metrics affected by architectural changes;
+- `developer`: unit tests + acceptance tests, with TDD for changed behavior; does not run full language/Gherkin mutation as part of the normal development loop;
+- `reviewer`: unit + acceptance + coverage + CRAP + DRY + mutation-site count; does not run full language mutation or Gherkin mutation;
+- `architect`: after reviewer gates pass, runs unit + acceptance + property tests when present + full language mutation hardening + soft Gherkin mutation; reruns deterministic structural metrics affected by architectural changes;
 - `qa`: final unit/acceptance verification as relevant + property tests when present + specifier E2E suite + CRAP + DRY + project release checks; does not normally rerun mutation testing.
+
+The default full-mutation ownership path is therefore:
+
+```text
+developer fast feedback -> reviewer deterministic gates -> architect mutation hardening -> qa
+```
 
 Every non-specifier role MUST fix or hand back failures before advancing the task.
 
