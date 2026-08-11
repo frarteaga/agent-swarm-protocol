@@ -34,9 +34,17 @@ specifier -> architect (design) -> developer -> reviewer -> architect (hardening
 
 The architect may therefore participate twice: once for design and again after implementation review for property/mutation hardening.
 
+### Fast feedback and mutation hardening
+
+Full mutation testing is deliberately kept out of the ordinary edit/push feedback loop. Developer and Reviewer use fast deterministic gates; full language mutation and soft Gherkin mutation are deferred to the Architect hardening stage after independent review.
+
+Hardening should operate on the exact reviewed revision and affected production scope, reuse valid incremental mutation state/cache, rerun surviving/affected mutants after test-only fixes when safe, and use bounded deterministic parallelism instead of requiring one-file-at-a-time sequential mutation.
+
+This keeps mutation testing as a strong final quality gate without making every feature iteration pay the full mutation cost.
+
 ## Installation and initialization
 
-1. Copy the `.agent/` directory into the repository the swarm will work on and commit it.
+1. Copy the `.agent/` directory into the repository and commit it.
 2. Create the protocol labels used by that repository (`agent:*` and `state:*` as defined in `AGENT_PROTOCOL.md`).
 3. Create one persistent LLM chat/session per agent. Initialize each session with its runtime values and tell it to read `.agent/bootstrap/AGENT_BOOTSTRAP.md`:
 
@@ -58,7 +66,7 @@ The default roles intentionally follow much of the engineering rigor used by Swa
 - **Specifier:** executable Gherkin plus user-interface E2E QA procedures.
 - **Developer:** strict red/green/refactor TDD plus executable acceptance tests.
 - **Reviewer:** independent review plus deterministic coverage, **CRAP <= 6**, DRY analysis, and **<= 100 mutation sites per changed/new source file**.
-- **Architect:** architecture review, property testing, language mutation hardening, and soft Gherkin mutation.
+- **Architect:** architecture review, property testing, affected-scope/incremental language mutation hardening, and soft Gherkin mutation.
 - **QA:** final acceptance/E2E/property verification plus final CRAP/DRY and release checks.
 
 Metrics must come from deterministic tools; agents must never estimate or invent quality numbers.
