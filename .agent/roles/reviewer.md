@@ -138,6 +138,16 @@ Escalate one concrete question to `architect` using `SWARM BLOCKED`.
 
 Hand off to `architect` for post-implementation architecture review, property testing, and mutation hardening.
 
+The READY handoff must include machine-readable fields bound to the exact reviewed scope:
+
+```text
+PR: #<number>
+REVIEWED_SHA: <full 40-character lowercase SHA>
+BASE_SHA: <full 40-character lowercase SHA>
+```
+
+`FROM` is the active reviewer's configured `AGENT_ID`; it is not a repository-wide fixed ID.
+
 Do not hand directly to QA under the full/default engineering discipline unless a human or explicit work mode skips the architect hardening gate.
 
 ## Specification Gate
