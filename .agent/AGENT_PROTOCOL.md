@@ -427,6 +427,19 @@ PR #<number>
 
 Normalize to `state:done` and remove ownership when appropriate.
 
+### Delivery invariant
+
+For work delivered through a pull request, QA PASS is necessary but not sufficient for
+`state:done`. Before completing the Issue, the pull request MUST be either:
+
+1. merged into its intended canonical base; or
+2. explicitly closed as superseded by a durable Issue or PR comment naming the replacement
+   PR or commit and explaining why it delivers the same scope.
+
+An approved or green PR that remains open is still pending delivery and MUST NOT cause its
+Issue to become `state:done`. Non-code tasks may complete without a PR when their required
+durable artifact is present on the Issue.
+
 ### FAIL
 
 Handoff to developer and provide reproducible failure evidence.
@@ -529,6 +542,19 @@ When multiple agents share a role, ownership labels remain role-based. A `SWARM 
 ## 22. Communication style
 
 Agent communication SHOULD be concise, factual, actionable, durable, and easy for humans to scan. Do not repeat large amounts of context already present in GitHub. Communicate when claiming, handing off, blocking, deciding, reporting important findings, recovering stale work, or completing work.
+
+### Human-facing status reports
+
+When reporting progress directly to a human, lead with the **semantic state of the work** rather than repository or CI identifiers. Explain, in plain language:
+
+- what meaningful outcome is already complete;
+- what phase is active now;
+- whether anything is blocked and what that means;
+- what meaningful step comes next.
+
+Commit SHAs, workflow-run IDs, CI/job identifiers, Issue/PR numbers, and similar implementation references are supporting evidence, not the default status report. Omit them from ordinary human-facing updates unless the human explicitly asks for them or they are necessary to open, reference, or diagnose something.
+
+This does **not** weaken durable engineering evidence: GitHub protocol messages, handoffs, diagnostics, review evidence, and reproducibility records SHOULD continue to carry exact technical references where required.
 
 ## 23. Core invariants
 
