@@ -10,6 +10,7 @@ GitHub acts as the shared memory and coordination layer: Issues represent work a
 .agent/
 ├── AGENT_PROTOCOL.md
 ├── ENGINEERING_RULES.md
+├── HARDENING_DIAGNOSTICS.md
 ├── roles/
 │   ├── specifier.md
 │   ├── architect.md
@@ -20,9 +21,11 @@ GitHub acts as the shared memory and coordination layer: Issues represent work a
     └── AGENT_BOOTSTRAP.md
 ```
 
-`AGENT_PROTOCOL.md` defines coordination: claims, handoffs, leases/TTL, stale-work recovery, ownership, specification blocks, and regression recovery.
+`AGENT_PROTOCOL.md` defines coordination: claims, handoffs, leases/TTL, stale-work recovery, ownership, specification blocks, delivery completion, human-facing status reporting, and regression recovery.
 
-`ENGINEERING_RULES.md` defines the default deterministic engineering discipline: Gherkin/APS acceptance tests, TDD, coverage, CRAP, DRY, mutation-site limits, mutation testing, property testing, and E2E verification.
+`ENGINEERING_RULES.md` defines the default deterministic engineering discipline: Gherkin/APS acceptance tests, TDD, coverage, CRAP, DRY, mutation-site limits, budgeted mutation hardening, property testing, and E2E verification.
+
+`HARDENING_DIAGNOSTICS.md` defines a durable evidence contract for long-running hardening so agents do not depend on transient or incomplete workflow logs.
 
 `AGENT_BOOTSTRAP.md` configures each agent instance with its role, agent ID, target repository, and work-lease TTL.
 
@@ -36,11 +39,13 @@ The architect may therefore participate twice: once for design and again after i
 
 ### Fast feedback and mutation hardening
 
-Full mutation testing is deliberately kept out of the ordinary edit/push feedback loop. Developer and Reviewer use fast deterministic gates; full language mutation and soft Gherkin mutation are deferred to the Architect hardening stage after independent review.
+Mutation testing is deliberately kept out of the ordinary edit/push feedback loop. Developer and Reviewer use fast deterministic gates; language mutation and soft Gherkin mutation are deferred to the Architect hardening stage after independent review.
 
-Hardening should operate on the exact reviewed revision and affected production scope, reuse valid incremental mutation state/cache, rerun surviving/affected mutants after test-only fixes when safe, and use bounded deterministic parallelism instead of requiring one-file-at-a-time sequential mutation.
+Per-PR language mutation is budgeted by default: target 200 mutant executions, with a normal hard ceiling of 300 unless a human explicitly overrides it. Selection must be deterministic, prioritize changed/affected behavioral code, and bind blocking results to the exact reviewed revision and selected scope. Out-of-budget mutants are diagnostic rather than automatic PR blockers.
 
-This keeps mutation testing as a strong final quality gate without making every feature iteration pay the full mutation cost.
+Hardening should reuse valid incremental mutation state/cache, rerun surviving/affected selected mutants after test-only fixes when safe, and use bounded deterministic parallelism. Full-project mutation remains useful as a periodic/manual diagnostic rather than a mandatory per-PR campaign.
+
+Long-running hardening should also persist its own stdout/stderr, exit code, selected scope, and revision identity in durable artifacts with an Issue/PR pointer, so a missing or incomplete raw workflow log does not destroy the evidence trail.
 
 ## Installation and initialization
 
@@ -65,9 +70,9 @@ The default roles intentionally follow much of the engineering rigor used by Swa
 
 - **Specifier:** executable Gherkin plus user-interface E2E QA procedures.
 - **Developer:** strict red/green/refactor TDD plus executable acceptance tests.
-- **Reviewer:** independent review plus deterministic coverage, **CRAP <= 6**, DRY analysis, and **<= 100 mutation sites per changed/new source file**.
-- **Architect:** architecture review, property testing, affected-scope/incremental language mutation hardening, and soft Gherkin mutation.
-- **QA:** final acceptance/E2E/property verification plus final CRAP/DRY and release checks.
+- **Reviewer:** independent review plus deterministic coverage, **CRAP <= 6**, DRY analysis, **<= 100 mutation sites per changed/new source file**, and an exact `PR`/`REVIEWED_SHA`/`BASE_SHA` handoff.
+- **Architect:** architecture review, property testing, budgeted affected-scope/incremental language mutation hardening, and soft Gherkin mutation.
+- **QA:** final acceptance/E2E/property verification plus final CRAP/DRY and release checks; implementation work reaches `state:done` only after the delivery invariant is satisfied.
 
 Metrics must come from deterministic tools; agents must never estimate or invent quality numbers.
 

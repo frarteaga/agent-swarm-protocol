@@ -105,11 +105,36 @@ Mutation testing is a final hardening gate, separate from ordinary developer/rev
 
 ### Fast-CI rule
 
-Full language mutation MUST NOT run by default on every ordinary `push` or `pull_request` update. The normal fast CI path should keep deterministic gates such as unit tests, acceptance tests, coverage, CRAP, DRY, and mutation-site counting, but reserve full mutation execution for the owning hardening stage.
+Full language mutation MUST NOT run by default on every ordinary `push` or `pull_request` update. The normal fast CI path should keep deterministic gates such as unit tests, acceptance tests, coverage, CRAP, DRY, and mutation-site counting, but reserve mutation execution for the owning hardening stage.
 
-By default, full language mutation begins only after reviewer quality gates pass and the task is handed to `architect`, or when a human explicitly requests an earlier mutation run.
+By default, language mutation begins only after reviewer quality gates pass and the task is handed to `architect`, or when a human explicitly requests an earlier mutation run.
 
-A project MAY implement this as a separate hardening workflow, an explicit/manual workflow dispatch, a role-transition trigger, or another deterministic mechanism that avoids putting full mutation in the edit/push feedback loop.
+A project MAY implement this as a separate hardening workflow, an explicit/manual workflow dispatch, a role-transition trigger, or another deterministic mechanism that avoids putting mutation testing in the edit/push feedback loop.
+
+### Generated and declarative artifacts
+
+Language mutation applies to behavioral production code. Versioned generated or declarative artifacts—such as generated source snapshots, schema snapshots, or declarative database migration revisions—MAY be structurally excluded when mutating them would test representation rather than behavior.
+
+Such exclusions MUST be explicit and project-configured. They MUST instead be verified with deterministic generation, migration, integration, schema, or round-trip tests appropriate to the artifact.
+
+Any reusable transformation, validation, normalization, state rule, or other business behavior used by such an artifact MUST live in ordinary testable code and remains in normal unit/property/mutation scope. Structural exclusions MUST NOT be used to hide difficult behavioral code from mutation testing.
+
+### Budgeted pull-request hardening
+
+Per-PR language mutation is **budgeted**, not an exhaustive full-project campaign.
+
+- The default target is **200 mutant executions per PR**.
+- The normal hard ceiling is **300 mutant executions per PR**. Exceed it only when a human explicitly approves the additional cost or when a narrowly bounded critical/security change requires it and the rationale is recorded.
+- Select mutants deterministically, prioritizing changed/new behavioral production code first, then directly affected high-value core behavior. Use stable ordering such as repository path plus mutation identifier so the same reviewed revision and configuration reproduce the same selected scope.
+- Prefer core policy/domain/runtime behavior over environmentally unsuitable IO/process/network shells. Structural shell exclusions remain subject to the testable-boundary rules above and MUST NOT be used to hide business behavior.
+- Mutants inside the selected budget are the PR's blocking mutation gate: meaningful survivors or uncovered selected sites must be killed, covered, behavior-preservingly redesigned, or explicitly accepted by a human.
+- Mutants outside the selected budget do **not** block that PR. Report them as deferred diagnostic scope rather than generating tests solely to improve an aggregate mutation score.
+- After test-only fixes, rerun only surviving/affected selected mutants when the tool can do so reproducibly; do not restart an unaffected mutation campaign.
+- Do not add large volumes of narrow contract tests whose only purpose is to chase mutation score when existing deterministic gates already provide adequate confidence in low-risk adapter/shell behavior.
+
+Full-project mutation remains useful as a **periodic/manual diagnostic** (for example scheduled maintenance or an explicit audit), but it is advisory for individual PR delivery by default. Findings from those broader runs should become focused backlog work when they expose meaningful risk; the mere existence of survivors outside a PR's budget is not a release blocker.
+
+A human or explicit work mode may narrow, expand, or waive the mutation budget for a specific task. Record that override durably with the exact PR/revision and keep all other required deterministic gates in force unless the override says otherwise.
 
 ### Incremental execution
 
@@ -119,8 +144,8 @@ When owned by the current role:
 - use differential or affected-scope mutation when the configured tool supports it;
 - preserve valid mutation manifests, incremental state, and tool cache across retries when safe and reproducible;
 - do not delete mutation state merely to force a clean run on every retry;
-- after test-only changes intended to kill survivors, prefer rerunning surviving/affected mutants instead of recomputing unaffected mutants;
-- invalidate/recompute the relevant mutation scope when production targets, mutation configuration, mutation-tool version, dependency/runtime assumptions, or cached source identity change materially;
+- after test-only changes intended to kill survivors, prefer rerunning surviving/affected selected mutants instead of recomputing unaffected mutants;
+- invalidate/recompute the relevant mutation scope when production targets, mutation configuration, mutation-tool version, dependency/runtime assumptions, selected budget, or cached source identity change materially;
 - cover uncovered mutation sites and kill meaningful surviving mutants with focused tests or behavior-preserving design improvements;
 - do not hand-edit mutation manifests;
 - when supported, use deterministic batching and at most `--max-workers 4`; a one-source-file-at-a-time sequential strategy is not required unless the configured tool/project specifically needs it;
@@ -166,14 +191,14 @@ Unless a human or explicit work mode says otherwise:
 
 - `specifier`: validates specification structure; does not run language mutation/CRAP/DRY;
 - `developer`: unit tests + acceptance tests, with TDD for changed behavior; does not run full language/Gherkin mutation as part of the normal development loop;
-- `reviewer`: unit + acceptance + coverage + CRAP + DRY + mutation-site count; does not run full language mutation or Gherkin mutation;
-- `architect`: after reviewer gates pass, runs unit + acceptance + property tests when present + full language mutation hardening + soft Gherkin mutation; reruns deterministic structural metrics affected by architectural changes;
+- `reviewer`: unit + acceptance + coverage + CRAP + DRY + mutation-site count; does not run language mutation or Gherkin mutation;
+- `architect`: after reviewer gates pass, runs unit + acceptance + property tests when present + budgeted changed/affected language mutation hardening + soft Gherkin mutation; reruns deterministic structural metrics affected by architectural changes;
 - `qa`: final unit/acceptance verification as relevant + property tests when present + specifier E2E suite + CRAP + DRY + project release checks; does not normally rerun mutation testing.
 
-The default full-mutation ownership path is therefore:
+The default mutation ownership path is therefore:
 
 ```text
-developer fast feedback -> reviewer deterministic gates -> architect mutation hardening -> qa
+developer fast feedback -> reviewer deterministic gates -> architect budgeted mutation hardening -> qa
 ```
 
 Every non-specifier role MUST fix or hand back failures before advancing the task.

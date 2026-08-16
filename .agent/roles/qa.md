@@ -119,6 +119,11 @@ Include final `[SWARM QUALITY EVIDENCE]` with the gates actually executed.
 
 Then normalize workflow state to `state:done` and remove the ownership label when appropriate. Close the Issue when the task is actually complete and closure is appropriate.
 
+For implementation work, do this only after confirming the delivery invariant in
+`AGENT_PROTOCOL.md`: the PR is merged into its intended canonical base, or a durable comment
+explicitly identifies the replacement PR/commit that supersedes it. Green checks or approval
+on an open PR do not by themselves permit `state:done`.
+
 ## FAIL
 
 For an implementation defect:
