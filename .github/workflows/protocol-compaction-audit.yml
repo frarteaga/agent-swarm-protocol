@@ -1,0 +1,39 @@
+name: protocol-compaction-audit
+
+on:
+  pull_request:
+    paths:
+      - '.agent/**/*.md'
+      - 'scripts/measure_agent_context.py'
+      - 'scripts/audit_protocol_semantics.py'
+      - 'scripts/check_protocol_structure.py'
+      - 'docs/compaction/**'
+      - '.github/workflows/protocol-compaction-audit.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned tokenizer
+        run: python -m pip install 'tiktoken==0.13.0'
+      - name: Measure baseline and current bundles
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python scripts/measure_agent_context.py --encoding o200k_base --ref "$HEAD_SHA" --compare-ref "$BASE_SHA" --minimum-startup-reduction 30
+      - name: Duplicate and RFC 2119 audit
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python scripts/audit_protocol_semantics.py --ref "$HEAD_SHA" --threshold 0.55
+      - name: Structural semantic tripwires
+        run: |
+          if test -f scripts/check_protocol_structure.py; then
+            python scripts/check_protocol_structure.py
+          fi
