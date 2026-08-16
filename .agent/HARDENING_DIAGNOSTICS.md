@@ -47,11 +47,11 @@ EXIT_CODE: <code>
 RETRIEVAL: <deterministic artifact retrieval procedure>
 ```
 
-Do not paste enormous mutation output into Issue/PR; the durable comment is the index and the artifact holds complete evidence. A short survivor/error summary MAY be included.
+Do not paste enormous mutation output into Issue/PR; the durable comment is the index and the artifact holds complete evidence. A short survivor/error summary may be included.
 
 ## Agent retrieval order on failure
 
-**[DIAG-RETRIEVE-01]** On red mutation/hardening: read the owning Issue/PR pointer; retrieve the named artifact; inspect persisted log, target/selection manifest, exit code and relevant cache identity; classify failure; use job/step status only for coarse localization. Raw job logs MAY be tried opportunistically, but after being shown unusable for that execution, do not repeatedly retry them instead of durable evidence.
+**[DIAG-RETRIEVE-01]** On red mutation/hardening: read the owning Issue/PR pointer; retrieve the named artifact; inspect persisted log, target/selection manifest, exit code and relevant cache identity; classify failure; use job/step status only for coarse localization. Raw job logs may be tried opportunistically, but after being shown unusable for that execution, do not repeatedly retry them instead of durable evidence.
 
 ## Failure classification
 
