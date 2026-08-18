@@ -42,7 +42,7 @@ The architect may therefore participate twice: once for design and again after i
 
 Security becomes required when work affects authentication/authorization, secrets, cryptography, network exposure, privileged process execution, filesystem/sandbox boundaries, untrusted inputs, agent/tool permissions, CI/CD permissions, supply-chain trust, sensitive persistence, or infrastructure/security configuration, or when a human/Architect explicitly requires it.
 
-When selected, the Architect records `SECURITY_GATE: REQUIRED`; the Security Agent performs adversarial assessment and emits one of `SECURITY PASS`, `SECURITY CHANGES REQUIRED`, `SECURITY ARCHITECTURE BLOCK`, or `SECURITY SPEC BLOCK`. A required gate cannot be bypassed by Reviewer or QA while a blocking Security result remains unresolved.
+If any listed risk criterion applies, the Architect records `SECURITY_GATE: REQUIRED`. `SECURITY_GATE: NOT_REQUIRED` is valid only after evaluating the criteria and finding that none apply, with a short rationale. Only an explicit durable human override may waive an otherwise required gate. The Security Agent performs adversarial assessment and emits one of `SECURITY PASS`, `SECURITY CHANGES REQUIRED`, `SECURITY ARCHITECTURE BLOCK`, or `SECURITY SPEC BLOCK`. A required gate cannot be bypassed by Reviewer or QA while a blocking Security result remains unresolved.
 
 ### Fast feedback and mutation hardening
 
@@ -79,7 +79,7 @@ Repositories already using an earlier five-role version can adopt Security witho
 2. create the new `agent:security` label without changing existing ownership labels;
 3. update local validation/configuration that enumerates canonical roles to include `security`;
 4. start a Security Agent only if/when desired; existing low-risk work does not need a retroactive Security gate unless a listed risk criterion or human/Architect decision requires it;
-5. for active security-relevant work, record `SECURITY_GATE: REQUIRED|NOT_REQUIRED` before the next downstream handoff and route required work through Security before QA completion.
+5. for active work, evaluate the Security criteria before the next downstream handoff: record `SECURITY_GATE: REQUIRED` if any listed criterion applies, otherwise `SECURITY_GATE: NOT_REQUIRED` with rationale; route required work through Security before QA completion.
 
 ## Engineering discipline
 
