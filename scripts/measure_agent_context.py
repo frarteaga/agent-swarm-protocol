@@ -18,7 +18,7 @@ from typing import Iterable
 
 TIKTOKEN_VERSION = "0.13.0"
 DEFAULT_ENCODING = "o200k_base"
-ROLES = ("specifier", "architect", "developer", "reviewer", "qa")
+ROLES = ("specifier", "architect", "developer", "reviewer", "security", "qa")
 COMMON = (
     ".agent/bootstrap/AGENT_BOOTSTRAP.md",
     ".agent/AGENT_PROTOCOL.md",
@@ -68,7 +68,10 @@ def snapshot(ref: str | None, encoding) -> dict:
     files = {p: metrics(read_bytes(p, ref), encoding) for p in markdown_paths(ref)}
     bundles = {}
     for role in ROLES:
-        startup = (*COMMON, f".agent/roles/{role}.md")
+        role_path = f".agent/roles/{role}.md"
+        if not exists(role_path, ref):
+            continue
+        startup = (*COMMON, role_path)
         first_message = startup + ((MESSAGE_REFERENCE,) if exists(MESSAGE_REFERENCE, ref) else ())
         bundles[role] = {
             "bundle1_startup": metrics(join_bundle(startup, ref), encoding),
@@ -86,8 +89,13 @@ def reduction(before: int, after: int) -> dict[str, float | int]:
 
 
 def compare(before: dict, after: dict) -> dict:
-    out = {"roles": {}}
-    for role in ROLES:
+    common_roles = [r for r in ROLES if r in before["roles"] and r in after["roles"]]
+    out = {
+        "roles": {},
+        "added_roles": [r for r in ROLES if r not in before["roles"] and r in after["roles"]],
+        "removed_roles": [r for r in ROLES if r in before["roles"] and r not in after["roles"]],
+    }
+    for role in common_roles:
         out["roles"][role] = {}
         for bundle in ("bundle1_startup", "bundle2_first_message"):
             out["roles"][role][bundle] = {
@@ -95,6 +103,10 @@ def compare(before: dict, after: dict) -> dict:
                 for unit in ("bytes", "tokens")
             }
     return out
+
+
+def ordered_roles(data: dict) -> list[str]:
+    return [r for r in ROLES if r in data["roles"]]
 
 
 def render_markdown(data: dict) -> str:
@@ -105,19 +117,23 @@ def render_markdown(data: dict) -> str:
     if r:
         lines += ["", f"README.md (separate, not startup): **{r['bytes']} bytes / {r['tokens']} tokens**."]
     lines += ["", "## Role bundles", "", "| Role | Bundle 1 bytes | Bundle 1 tokens | Bundle 2 bytes | Bundle 2 tokens |", "|---|---:|---:|---:|---:|"]
-    for role in ROLES:
+    for role in ordered_roles(data):
         b = data["roles"][role]
         lines.append(f"| {role} | {b['bundle1_startup']['bytes']} | {b['bundle1_startup']['tokens']} | {b['bundle2_first_message']['bytes']} | {b['bundle2_first_message']['tokens']} |")
     return "\n".join(lines)
 
 
 def render_comparison(data: dict) -> str:
-    lines = ["# Context reduction", "", "| Role | Bundle | Bytes before→after | Bytes saved | Tokens before→after | Tokens saved |", "|---|---|---:|---:|---:|---:|"]
-    for role in ROLES:
+    lines = ["# Context change", "", "| Role | Bundle | Bytes before→after | Bytes saved | Tokens before→after | Tokens saved |", "|---|---|---:|---:|---:|---:|"]
+    for role in [r for r in ROLES if r in data["roles"]]:
         for bundle, label in (("bundle1_startup", "startup"), ("bundle2_first_message", "startup + first message")):
             row = data["roles"][role][bundle]
             b, t = row["bytes"], row["tokens"]
             lines.append(f"| {role} | {label} | {b['before']}→{b['after']} | {b['saved']} ({b['percent']}%) | {t['before']}→{t['after']} | {t['saved']} ({t['percent']}%) |")
+    if data["added_roles"]:
+        lines += ["", "Added roles: " + ", ".join(data["added_roles"])]
+    if data["removed_roles"]:
+        lines += ["", "Removed roles: " + ", ".join(data["removed_roles"])]
     return "\n".join(lines)
 
 
@@ -150,7 +166,7 @@ def main() -> int:
 
     if args.minimum_startup_reduction is not None:
         failures = []
-        for role in ROLES:
+        for role in comp["roles"]:
             for unit in ("bytes", "tokens"):
                 pct = comp["roles"][role]["bundle1_startup"][unit]["percent"]
                 if pct < args.minimum_startup_reduction:
