@@ -4,7 +4,7 @@ These are the swarm's default deterministic engineering and verification rules. 
 
 ## Shared quality policy
 
-**[ENG-EVIDENCE-01] Deterministic evidence.** Quality metrics MUST come from deterministic tools; agents MUST NOT estimate, intuit, or invent coverage, complexity, CRAP, duplication, mutation counts/scores, or test results. For each owned gate, record exact command/project script, relevant tool/version, source/test scope, numeric result when produced, and pass/fail. Prefer project-local version-controlled commands/configuration; same revision/config/tool version SHOULD reproduce the measurement.
+**[ENG-EVIDENCE-01] Deterministic evidence.** Quality metrics MUST come from deterministic tools; agents MUST NOT estimate, intuit, or invent coverage, complexity, CRAP, duplication, mutation counts/scores, test results, or security-tool results. For each owned gate, record exact command/project script, relevant tool/version, source/test scope, numeric result when produced, and pass/fail. Prefer project-local version-controlled commands/configuration; same revision/config/tool version SHOULD reproduce the measurement.
 
 **[ENG-TOOLING-01] Canonical tooling.** Gherkin acceptance uses APS (`github.com/unclebob/Acceptance-Pipeline-Specification`) and its `gherkin-parser`/`gherkin-mutator`; do not reimplement them. Prefer canonical SwarmForge tools when available: Go `mutate4go/crap4go/dry4go`, Clojure `clj-mutate/crap4clj/dry4clj`, Java `mutate4java/crap4java/dry4java`. Other languages use project-configured deterministic equivalents. Missing required tooling is escalated to architect/human, never replaced by LLM judgment. Inspect unfamiliar tool docs/help; do not use stale cached/vendored tools when a fresher required canonical version is obtainable.
 
@@ -38,6 +38,8 @@ These are the swarm's default deterministic engineering and verification rules. 
 
 **[ENG-E2E-01] End-to-end QA.** Specifier defines user-visible E2E procedures; QA makes them executable when practical and runs through the real user interface. E2E MUST NOT bypass UI via private/internal project API. CLI flags or QA commands are valid only as legitimate user-interface affordances.
 
+**[ENG-SECURITY-01] Security verification.** When `PROTO-SECURITY-GATE-01` selects Security, use project-appropriate deterministic/reproducible security tooling where available (for example static analysis, dependency/advisory scanning, secret scanning, permission/configuration checks, fuzzing, or focused adversarial tests). Tool output alone is not a finding: Security validates exploitability/relevance, records false positives, protects secrets, and re-tests remediations before PASS. Missing required security tooling or unsafe-to-run validation is escalated rather than replaced by unsupported LLM confidence.
+
 ## Gate ownership
 
 **[ENG-GATES-01] Default role gates.** Unless a human/work mode overrides:
@@ -45,10 +47,11 @@ These are the swarm's default deterministic engineering and verification rules. 
 - `specifier`: specification structure only; no language mutation/CRAP/DRY;
 - `developer`: unit + acceptance, TDD for changed behavior; no normal language/Gherkin mutation;
 - `reviewer`: unit + acceptance + coverage + CRAP + DRY + mutation-site count; no language/Gherkin mutation;
-- `architect`: after reviewer passes, unit + acceptance + property when present + budgeted changed/affected language mutation + soft Gherkin mutation; rerun structural metrics affected by architect changes;
-- `qa`: final relevant unit/acceptance + property when present + specifier E2E + CRAP + DRY + project release checks; normally no mutation rerun.
+- `architect`: after reviewer passes, unit + acceptance + property when present + budgeted changed/affected language mutation + soft Gherkin mutation; rerun structural metrics affected by architect changes; select/record the Security gate when risk criteria apply;
+- `security`: only when selected/assigned, adversarial security assessment + relevant deterministic security tooling + exploitability triage + remediation re-verification; does not replace reviewer/architect/QA gates;
+- `qa`: final relevant unit/acceptance + property when present + specifier E2E + CRAP + DRY + project release checks; when Security is required, verify current `SECURITY PASS`; normally no mutation rerun.
 
-Default path: `developer fast feedback -> reviewer deterministic gates -> architect budgeted mutation hardening -> qa`. Every non-specifier role MUST fix or hand back failures before advancing.
+Default path: `developer fast feedback -> reviewer deterministic gates -> architect budgeted mutation hardening -> security when required -> qa`. Every non-specifier role MUST fix or hand back failures before advancing.
 
 **[ENG-EVIDENCE-FORMAT-01] Quality evidence schema.** For gates actually executed by the role:
 
@@ -64,6 +67,7 @@ MUTATION_SITES: <command> -> max <count/file>
 MUTATION: <command> -> <result>
 GHERKIN_MUTATION: <command> -> <result>
 PROPERTY: <command> -> <result>
+SECURITY: <command/tool/scope> -> <result>
 E2E: <command> -> <result>
 ```
 
