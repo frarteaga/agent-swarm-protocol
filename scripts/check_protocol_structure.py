@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Structural tripwires for semantic-preserving protocol compaction.
+"""Structural tripwires for the canonical swarm protocol.
 
 This intentionally does not claim semantic proof; it detects missing files/sections,
-ID coverage errors, threshold/schema loss, and accidental duplicate definitions.
+ID coverage errors, threshold/schema loss, role/label drift, and accidental duplicate definitions.
 """
 from __future__ import annotations
 
@@ -10,13 +10,14 @@ import collections
 import re
 from pathlib import Path
 
+ROLES = ("specifier", "architect", "developer", "reviewer", "security", "qa")
 REQUIRED = [
     ".agent/AGENT_PROTOCOL.md",
     ".agent/ENGINEERING_RULES.md",
     ".agent/HARDENING_DIAGNOSTICS.md",
     ".agent/bootstrap/AGENT_BOOTSTRAP.md",
     ".agent/reference/SWARM_MESSAGES.md",
-    *[f".agent/roles/{r}.md" for r in ("specifier", "architect", "developer", "reviewer", "qa")],
+    *[f".agent/roles/{r}.md" for r in ROLES],
     "docs/compaction/phase-a-inventory.md",
     "docs/compaction/phase-f-equivalence.md",
 ]
@@ -46,7 +47,7 @@ def main() -> int:
         require(Path(path).is_file(), f"missing required file: {path}")
 
     role_headings = ("## Mission", "## Role-specific rules", "## Outcomes", "## Completion condition")
-    for role in ("specifier", "architect", "developer", "reviewer", "qa"):
+    for role in ROLES:
         text = read(f".agent/roles/{role}.md")
         for heading in role_headings:
             require(heading in text, f"{role}: missing {heading}")
@@ -55,8 +56,9 @@ def main() -> int:
     engineering = read(".agent/ENGINEERING_RULES.md")
     bootstrap = read(".agent/bootstrap/AGENT_BOOTSTRAP.md")
     messages = read(".agent/reference/SWARM_MESSAGES.md")
+    readme = read("README.md")
 
-    for marker in ("## Authority and identity", "## Workflow state and discovery", "## Claims, leases, and recovery", "## Issue, PR, and specification authority", "## Review, QA, completion, regression", "## Flow, concurrency, communication"):
+    for marker in ("## Authority and identity", "## Workflow state and discovery", "## Claims, leases, and recovery", "## Issue, PR, and specification authority", "## Review, security, QA, completion, regression", "## Flow, concurrency, communication"):
         require(marker in protocol, f"protocol missing section {marker}")
     for marker in ("## Shared quality policy", "## Mutation and hardening", "## Gate ownership"):
         require(marker in engineering, f"engineering rules missing section {marker}")
@@ -65,6 +67,22 @@ def main() -> int:
 
     require("MUST load `.agent/reference/SWARM_MESSAGES.md`" in protocol, "message reference is not mandatory before emission")
     require("[SWARM CLAIM]" not in protocol, "message template duplicated in hot-path protocol")
+
+    # Canonical role/security invariants introduced by Issue #6.
+    require("agent:specifier|architect|developer|reviewer|security|qa" in protocol, "security missing from canonical ownership labels")
+    require("[PROTO-SECURITY-GATE-01]" in protocol, "security gate policy missing")
+    require("SECURITY_GATE: REQUIRED|NOT_REQUIRED" in protocol, "security gate decision marker missing")
+    require("`NOT_REQUIRED` is valid only when all listed criteria were evaluated and none apply" in protocol, "security NOT_REQUIRED bypass protection missing")
+    require("explicit human override" in protocol, "security human-override semantics missing")
+    architect = read(".agent/roles/architect.md")
+    require("listed risk criterion applies, record `SECURITY_GATE: REQUIRED`" in architect, "architect can bypass required Security gate")
+    require("reviewer->security" in protocol and "security->developer|architect|specifier|qa" in protocol, "security workflow transitions missing")
+    require("MSG-SECURITY-RESULT-01" in protocol, "security result schema not referenced by protocol")
+    security = read(".agent/roles/security.md")
+    for literal in ("SECURITY PASS", "SECURITY CHANGES REQUIRED", "SECURITY ARCHITECTURE BLOCK", "SECURITY SPEC BLOCK", "minimum privileges", "never expose secrets"):
+        require(literal in security, f"security role invariant missing: {literal}")
+    require("security" in engineering, "security gate ownership missing from engineering rules")
+    require("Migration" in readme and "agent:security" in readme, "security migration path missing from README")
 
     # Canonical definition IDs must be unique; references elsewhere are allowed.
     definitions = []
@@ -105,6 +123,7 @@ def main() -> int:
         "MSG-DECISION-01": ["[SWARM DECISION]", "FROM:", "ROLE:", "TO:", "DECISION:", "RATIONALE:", "REFS:", "Issue #", "PR #"],
         "MSG-SPEC-BLOCK-01": ["[SWARM SPEC BLOCK]", "FROM:", "ROLE: specifier", "TO: developer", "REQUIREMENT:", "PROBLEM:", "REQUIRED OUTCOME:", "REFS:", "Issue #", "PR #"],
         "MSG-SPEC-CLEAR-01": ["[SWARM SPEC CLEAR]", "FROM:", "ROLE: specifier", "RESULT:", "REFS:", "Issue #", "PR #"],
+        "MSG-SECURITY-RESULT-01": ["[SWARM SECURITY RESULT]", "FROM:", "ROLE: security", "RESULT:", "SCOPE:", "EVIDENCE:", "REFS:", "Issue #", "PR #"],
         "MSG-COMPLETE-01": ["[SWARM COMPLETE]", "FROM:", "ROLE: qa", "RESULT:", "PASS", "REFS:", "Issue #", "PR #"],
         "MSG-REGRESSION-01": ["[SWARM REGRESSION]", "FROM:", "ROLE:", "TYPE:", "REGRESSION", "OBSERVED:", "EXPECTED:", "ORIGINAL_COMPLETION:", "REFS:", "Issue #", "PR #"],
     }
@@ -113,7 +132,7 @@ def main() -> int:
         for field in fields:
             require(field in body, f"{msg_id}: missing required field/literal {field}")
 
-    print(f"OK: {len(inventory_ids)} old inventory IDs mapped exactly once to {len(by_id)} unique canonical definitions")
+    print(f"OK: {len(inventory_ids)} old inventory IDs mapped exactly once to {len(by_id)} unique canonical definitions; roles={','.join(ROLES)}")
     return 0
 
 

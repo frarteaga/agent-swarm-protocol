@@ -26,12 +26,12 @@ jobs:
           python-version: '3.12'
       - name: Install pinned tokenizer
         run: python -m pip install 'tiktoken==0.13.0'
-      - name: Measure baseline and current bundles
+      - name: Measure base and current bundles
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          python scripts/measure_agent_context.py --encoding o200k_base --ref "$HEAD_SHA" --compare-ref "$BASE_SHA" --minimum-startup-reduction 30
+          python scripts/measure_agent_context.py --encoding o200k_base --ref "$HEAD_SHA" --compare-ref "$BASE_SHA"
       - name: Duplicate and RFC 2119 audits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

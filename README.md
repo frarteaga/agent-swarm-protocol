@@ -16,14 +16,15 @@ GitHub acts as the shared memory and coordination layer: Issues represent work a
 │   ├── architect.md
 │   ├── developer.md
 │   ├── reviewer.md
+│   ├── security.md
 │   └── qa.md
 └── bootstrap/
     └── AGENT_BOOTSTRAP.md
 ```
 
-`AGENT_PROTOCOL.md` defines coordination: claims, handoffs, leases/TTL, stale-work recovery, ownership, specification blocks, delivery completion, human-facing status reporting, and regression recovery.
+`AGENT_PROTOCOL.md` defines coordination: claims, handoffs, leases/TTL, stale-work recovery, ownership, specification/security blocks, delivery completion, human-facing status reporting, and regression recovery.
 
-`ENGINEERING_RULES.md` defines the default deterministic engineering discipline: Gherkin/APS acceptance tests, TDD, coverage, CRAP, DRY, mutation-site limits, budgeted mutation hardening, property testing, and E2E verification.
+`ENGINEERING_RULES.md` defines the default deterministic engineering discipline: Gherkin/APS acceptance tests, TDD, coverage, CRAP, DRY, mutation-site limits, budgeted mutation hardening, property testing, risk-based security verification, and E2E verification.
 
 `HARDENING_DIAGNOSTICS.md` defines a durable evidence contract for long-running hardening so agents do not depend on transient or incomplete workflow logs.
 
@@ -32,10 +33,16 @@ GitHub acts as the shared memory and coordination layer: Issues represent work a
 Under the full/default engineering discipline, the quality path is roughly:
 
 ```text
-specifier -> architect (design) -> developer -> reviewer -> architect (hardening) -> qa -> done
+specifier -> architect (design) -> developer -> reviewer -> architect (hardening) -> security (when required) -> qa -> done
 ```
 
-The architect may therefore participate twice: once for design and again after implementation review for property/mutation hardening.
+The architect may therefore participate twice: once for design and again after implementation review for property/mutation hardening. Security is a risk-based gate, not a mandatory serial step for unrelated low-risk changes.
+
+### Security gate
+
+Security becomes required when work affects authentication/authorization, secrets, cryptography, network exposure, privileged process execution, filesystem/sandbox boundaries, untrusted inputs, agent/tool permissions, CI/CD permissions, supply-chain trust, sensitive persistence, or infrastructure/security configuration, or when a human/Architect explicitly requires it.
+
+If any listed risk criterion applies, the Architect records `SECURITY_GATE: REQUIRED`. `SECURITY_GATE: NOT_REQUIRED` is valid only after evaluating the criteria and finding that none apply, with a short rationale. Only an explicit durable human override may waive an otherwise required gate. The Security Agent performs adversarial assessment and emits one of `SECURITY PASS`, `SECURITY CHANGES REQUIRED`, `SECURITY ARCHITECTURE BLOCK`, or `SECURITY SPEC BLOCK`. A required gate cannot be bypassed by Reviewer or QA while a blocking Security result remains unresolved.
 
 ### Fast feedback and mutation hardening
 
@@ -50,8 +57,8 @@ Long-running hardening should also persist its own stdout/stderr, exit code, sel
 ## Installation and initialization
 
 1. Copy the `.agent/` directory into the repository and commit it.
-2. Create the protocol labels used by that repository (`agent:*` and `state:*` as defined in `AGENT_PROTOCOL.md`).
-3. Create one persistent LLM chat/session per agent. Initialize each session with its runtime values and tell it to read `.agent/bootstrap/AGENT_BOOTSTRAP.md`:
+2. Create the protocol labels used by that repository (`agent:*` and `state:*` as defined in `AGENT_PROTOCOL.md`), including `agent:security`.
+3. Create one persistent LLM chat/session per agent role you intend to run. Initialize each session with its runtime values and tell it to read `.agent/bootstrap/AGENT_BOOTSTRAP.md`:
 
 ```text
 ROLE: developer
@@ -64,6 +71,16 @@ Read and follow .agent/bootstrap/AGENT_BOOTSTRAP.md.
 
 Each agent then reads the protocol, shared engineering rules, and its corresponding `.agent/roles/<ROLE>.md`, inspects GitHub, and begins work assigned to `agent:<ROLE>`. The same bootstrap is used for every agent; only the runtime values change.
 
+### Migration for existing installations
+
+Repositories already using an earlier five-role version can adopt Security without invalidating current work:
+
+1. copy/update the protocol files, including `.agent/roles/security.md` and `.agent/reference/SWARM_MESSAGES.md`;
+2. create the new `agent:security` label without changing existing ownership labels;
+3. update local validation/configuration that enumerates canonical roles to include `security`;
+4. start a Security Agent only if/when desired; existing low-risk work does not need a retroactive Security gate unless a listed risk criterion or human/Architect decision requires it;
+5. for active work, evaluate the Security criteria before the next downstream handoff: record `SECURITY_GATE: REQUIRED` if any listed criterion applies, otherwise `SECURITY_GATE: NOT_REQUIRED` with rationale; route required work through Security before QA completion.
+
 ## Engineering discipline
 
 The default roles intentionally follow much of the engineering rigor used by SwarmForge while keeping GitHub as the communication transport:
@@ -71,10 +88,11 @@ The default roles intentionally follow much of the engineering rigor used by Swa
 - **Specifier:** executable Gherkin plus user-interface E2E QA procedures.
 - **Developer:** strict red/green/refactor TDD plus executable acceptance tests.
 - **Reviewer:** independent review plus deterministic coverage, **CRAP <= 6**, DRY analysis, **<= 100 mutation sites per changed/new source file**, and an exact `PR`/`REVIEWED_SHA`/`BASE_SHA` handoff.
-- **Architect:** architecture review, property testing, budgeted affected-scope/incremental language mutation hardening, and soft Gherkin mutation.
-- **QA:** final acceptance/E2E/property verification plus final CRAP/DRY and release checks; implementation work reaches `state:done` only after the delivery invariant is satisfied.
+- **Architect:** architecture review, Security-gate selection, property testing, budgeted affected-scope/incremental language mutation hardening, and soft Gherkin mutation.
+- **Security:** risk-based adversarial assessment, deterministic/reproducible security tooling, exploitability triage, safe evidence, and remediation re-verification.
+- **QA:** final acceptance/E2E/property verification plus final CRAP/DRY and release checks; verifies a current Security PASS when required; implementation work reaches `state:done` only after the delivery invariant is satisfied.
 
-Metrics must come from deterministic tools; agents must never estimate or invent quality numbers.
+Metrics and security-tool results must come from deterministic/reproducible tools where available; agents must never estimate or invent quality numbers or claim unexecuted security evidence.
 
 ## Inspiration
 
@@ -84,4 +102,4 @@ This protocol takes a different approach to transport and coordination: instead 
 
 ## Goal
 
-Keep multi-agent software development simple, auditable, recoverable, deterministic, and easy for a human to supervise.
+Keep multi-agent software development simple, auditable, recoverable, deterministic, secure, and easy for a human to supervise.
