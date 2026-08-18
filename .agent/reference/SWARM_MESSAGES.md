@@ -152,6 +152,30 @@ Issue #<number>
 PR #<number>
 ```
 
+## Security result — MSG-SECURITY-RESULT-01
+
+```text
+[SWARM SECURITY RESULT]
+
+FROM: <AGENT_ID>
+ROLE: security
+
+RESULT:
+<SECURITY PASS|SECURITY CHANGES REQUIRED|SECURITY ARCHITECTURE BLOCK|SECURITY SPEC BLOCK>
+
+SCOPE:
+<security-relevant surface and exact implementation revision assessed>
+
+EVIDENCE:
+<reproducible commands/tools/findings or safe evidence references>
+
+REFS:
+Issue #<number>
+PR #<number>
+```
+
+A blocking Security result is followed by the appropriate `MSG-HANDOFF-01` or `MSG-BLOCKED-01`. `SECURITY PASS` is valid only for the assessed revision/scope and after affected prior findings have been re-verified.
+
 ## Complete — MSG-COMPLETE-01
 
 ```text
